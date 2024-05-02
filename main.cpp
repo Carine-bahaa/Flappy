@@ -6,26 +6,57 @@
 using namespace std;
 using namespace sf;
 
-/* =================== EASY LEVEL =================== */
-
 #define SPEED -5 // Speed of pipes and grounds
 #define Sover -10 // Transition for game over
-#define GAP 120 // gap between pipes
+#define GAP 165 // gap between pipes
 #define DIS 1330 // distances between pipes
+#define distbet 100
+int oo = 0;
+
+enum GameState
+{
+    MainMenu,
+    eTTP,
+    eGame,
+    eDifficulty,
+    Credits,
+    eThemes,
+    BirdThemes,
+    GameOver
+};
+
+GameState currentGameState = GameState::MainMenu;
 
 RenderWindow window(VideoMode(1700, 800), "Flappy Bird", Style::Default);
 Event event;
+const float SCREEN_W = window.getSize().x;
+const float SCREEN_H = window.getSize().y;
 
-short int modes = 0, diff = 2, n=0 ;
-bool ttp = 0;
-float Velocity, Gravity, m=0.4;
+short int diff = 0, BirdTheme = 0, ChooseTheme = 0;
+bool ttp = 0, Reseting = 0;
+float Velocity, Gravity, PipeSpeedUpNDown = 0.75;
 
+Font MainFont;
+Font FontTheme;
+Font fontrate;
+
+void setFonts()
+{
+    FontTheme.loadFromFile("arial.TTF");
+    fontrate.loadFromFile("pixelmix_bold.ttf");
+    MainFont.loadFromFile("pixelmix.ttf");
+}
+
+void setAssets();
+void transition();
+void draw();
+void animation();
 
 
 struct Flash
 {
     RectangleShape TheFlash;
-    Clock Time;
+    Clock Flash_dt;
     bool FlashOn, RestartTime;
 
     void Constructor()
@@ -38,11 +69,11 @@ struct Flash
     {
         if (!RestartTime)
         {
-            Time.restart();
+            Flash_dt.restart();
             RestartTime = 1;
         }
 
-        if (FlashOn && Time.getElapsedTime().asSeconds() < 0.15)
+        if (FlashOn && Flash_dt.getElapsedTime().asSeconds() < 0.15)
             TheFlash.setFillColor(Color(0, 0, 0, 150));
 
         else
@@ -63,8 +94,8 @@ struct Pipes
 
     void Constructor()
     {
-        Tex[0].loadFromFile("pipeup1.png");
-        Tex[1].loadFromFile("pipedown1.png");
+        Tex[0].loadFromFile("pipeup2.png");
+        Tex[1].loadFromFile("pipedown2.png");
 
         for (int i = 0; i < 5; i++)
         {
@@ -73,33 +104,24 @@ struct Pipes
             PiUp[i].setPosition(1700, Rand);
 
             PiDown[i].setTexture(Tex[1]);
-            PiDown[i].setPosition(1700, Rand  - GAP * 5);
+            PiDown[i].setPosition(1700, PiUp[i].getPosition().y - GAP * 5);
         }
         x = 0, y = 0, a = 0, b = 0;
     }
 
     void GenRan()
     {
-        Rand = 200 + rand() % 296;
+        Rand = 260 + rand() % 236;
     }
 
     void MovePipesOne()
     {
-        GenRan();
         PiUp[0].move(SPEED, 0);
         PiDown[0].move(SPEED, 0);
-
-        if (PiUp[0].getPosition().x <= -84)
-        {
-            PiUp[0].setPosition(1700, Rand);
-            PiDown[0].setPosition(1700, Rand - GAP * 5);
-        }
     }
 
     void MovePipesTwo()
     {
-        GenRan();
-
         if (PiUp[0].getPosition().x <= DIS)
             x = 1;
 
@@ -108,18 +130,10 @@ struct Pipes
             PiUp[1].move(SPEED, 0);
             PiDown[1].move(SPEED, 0);
         }
-
-        if (PiUp[1].getPosition().x <= -84)
-        {
-            PiUp[1].setPosition(1700, Rand);
-            PiDown[1].setPosition(1700, Rand - GAP * 5);
-        }
     }
 
     void MovePipesThree()
     {
-        GenRan();
-
         if (PiUp[1].getPosition().x <= DIS)
             y = 1;
 
@@ -128,18 +142,10 @@ struct Pipes
             PiUp[2].move(SPEED, 0);
             PiDown[2].move(SPEED, 0);
         }
-
-        if (PiUp[2].getPosition().x <= -84)
-        {
-            PiUp[2].setPosition(1700, Rand);
-            PiDown[2].setPosition(1700, Rand - (GAP * 5) + 10);
-        }
     }
 
     void MovePipesFour()
     {
-        GenRan();
-
         if (PiUp[2].getPosition().x <= DIS)
             a = 1;
 
@@ -148,18 +154,10 @@ struct Pipes
             PiUp[3].move(SPEED, 0);
             PiDown[3].move(SPEED, 0);
         }
-
-        if (PiUp[3].getPosition().x <= -84)
-        {
-            PiUp[3].setPosition(1700, Rand);
-            PiDown[3].setPosition(1700, Rand - (GAP * 5) + 10);
-        }
     }
 
     void MovePipesFive()
     {
-        GenRan();
-
         if (PiUp[3].getPosition().x <= DIS)
             b = 1;
 
@@ -167,12 +165,6 @@ struct Pipes
         {
             PiUp[4].move(SPEED, 0);
             PiDown[4].move(SPEED, 0);
-        }
-
-        if (PiUp[4].getPosition().x <= -84)
-        {
-            PiUp[4].setPosition(1700, Rand);
-            PiDown[4].setPosition(1700, Rand - (GAP * 5) + 10);
         }
     }
 
@@ -183,6 +175,19 @@ struct Pipes
         MovePipesThree();
         MovePipesFour();
         MovePipesFive();
+    }
+
+    void ResetPipesPosition()
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            GenRan();
+            if (PiUp[i].getPosition().x <= -112)
+            {
+                PiUp[i].setPosition(1700, Rand);
+                PiDown[i].setPosition(1700, PiUp[i].getPosition().y - GAP * 5);
+            }
+        }
     }
 
     void Draw()
@@ -205,7 +210,7 @@ struct Ground
         Grounds.loadFromFile("Land.PNG");
         TwoGrounds.setTexture(Grounds);
         TwoGrounds.setPosition(PosX, PosY);
-        TwoGrounds.setScale(2.2, 1);
+        TwoGrounds.setScale(2.18, 1);
     }
 
     void MoveGrounds()
@@ -213,7 +218,7 @@ struct Ground
         TwoGrounds.move(SPEED, 0);
 
         if (TwoGrounds.getPosition().x <= -1700)
-            TwoGrounds.setPosition(1700, 650);
+            TwoGrounds.setPosition(1700, 700);
     }
 
     void Draw()
@@ -225,23 +230,32 @@ struct Ground
 
 struct Bird
 {
-    Texture Tx[4];
+    Texture TxOne[4], TxTwo[4], TxThree[4];
     Sprite Bird;
-    Clock dt, UpAndDown, AA;
+    Clock dt, UpAndDown;
     SoundBuffer H, J, W;
     Sound Hit, Jump, Whoop;
-    int Rotation = 0, Iterator = 0;
-    float  Gravity;
-    bool Input = 0, Splayed , ToMove;
+    int Rotation, Iterator;
+    bool Input, Splayed, ToMove;
 
     void Constructor(float Scale, float PosX, float PosY)
     {
-        Tx[0].loadFromFile("birddown.png");
-        Tx[1].loadFromFile("birdmid.png");
-        Tx[2].loadFromFile("birdup.png");
-        Tx[3].loadFromFile("birdmid.png");
+        TxOne[0].loadFromFile("birddown.png");
+        TxOne[1].loadFromFile("birdmid.png");
+        TxOne[2].loadFromFile("birdup.png");
+        TxOne[3].loadFromFile("birdmid.png");
 
-        Bird.setTexture(Tx[Iterator]);
+        TxTwo[0].loadFromFile("birddown2.png");
+        TxTwo[1].loadFromFile("birdmid2.png");
+        TxTwo[2].loadFromFile("birdup2.png");
+        TxTwo[3].loadFromFile("birdmid2.png");
+
+        TxThree[0].loadFromFile("birddown3.png");
+        TxThree[1].loadFromFile("birdmid3.png");
+        TxThree[2].loadFromFile("birdup3.png");
+        TxThree[3].loadFromFile("birdmid3.png");
+
+
         Bird.setPosition(PosX, PosY);
         Bird.setOrigin(Bird.getGlobalBounds().width / 2, Bird.getGlobalBounds().height / 2);
         Bird.setScale(Scale, Scale);
@@ -256,7 +270,7 @@ struct Bird
         W.loadFromFile("Whoop.wav");
         Whoop.setBuffer(W);
 
-        Splayed = 0, Velocity = 0, ToMove = 0, Gravity = 0.3;
+        Splayed = 0, Velocity = 0, ToMove = 0, Rotation = 0, Iterator = 0, Input = 0, Gravity = 0.35;
     }
 
     void Animate()
@@ -269,7 +283,15 @@ struct Bird
             else
                 Iterator = 0;
 
-            Bird.setTexture(Tx[Iterator]);
+            if (BirdTheme == 0)
+                Bird.setTexture(TxOne[Iterator]);
+
+            if (BirdTheme == 1)
+                Bird.setTexture(TxTwo[Iterator]);
+
+            if (BirdTheme == 2)
+                Bird.setTexture(TxThree[Iterator]);
+
             dt.restart();
         }
     }
@@ -278,12 +300,12 @@ struct Bird
     {
         if (UpAndDown.getElapsedTime().asSeconds() >= 0.1 && !ToMove)
         {
-            Bird.move(0, -0.5);
+            Bird.move(0, -1);
             ToMove = 1;
         }
         if (UpAndDown.getElapsedTime().asSeconds() >= 0.2 && ToMove)
         {
-            Bird.move(0, 0.5);
+            Bird.move(0, 1);
             ToMove = 0;
             UpAndDown.restart();
         }
@@ -307,134 +329,28 @@ struct Bird
 
     void GUI()
     {
-        if (event.type == Event::MouseButtonPressed && !Input)
+        Bird.move(0, Velocity);
+        if (!Input && event.type == Event::KeyPressed)
         {
-            if (event.mouseButton.button == Mouse::Left)
+            if (event.key.code == Keyboard::Space)
             {
                 Jump.play();
                 Input = 1;
-                
+
                 if (diff == 1)
-                Velocity = 5;
+                    Velocity = 5;
 
                 else
-                Velocity = -5;
+                    Velocity = -5;
 
-                 Bird.move(0, Velocity * 9 / 5);
+                Bird.move(0, Velocity * 9 / 5);
             }
         }
 
-        if (event.type == Event::MouseButtonReleased)
+        if (event.type == Event::KeyReleased)
         {
-            if (event.mouseButton.button == Mouse::Left)
+            if (event.key.code == Keyboard::Space)
                 Input = 0;
-        }
-
-    }
-     
-    void d()
-    {
-        if (diff == 0)
-        {
-            Velocity += Gravity;
-
-            if (Velocity >= 0)
-                RotateDown();
-
-            else
-                RotateUp();
-        }
-    
-    if (diff == 1)
-    {
-
-
-        Velocity -= Gravity;
-        if (Velocity <= 0)
-            RotateDown();
-
-        else
-            RotateUp();
-
-    }
-    if (diff == 2)
-    {
-        Velocity += Gravity;
-
-        if (Velocity >= 0)
-            RotateDown();
-
-        else
-            RotateUp();
-
-        if (AA.getElapsedTime().asSeconds() <= 2)
-        {
-            for (int i = 0; i < 5; i++)
-            {
-                if (i % 2 == 0)
-                {
-                    Pipes.PiUp[i].move(0, m);
-                    Pipes.PiDown[i].move(0, m);
-                }
-                else
-                {
-                    Pipes.PiUp[i].move(0, -m);
-                    Pipes.PiDown[i].move(0, -m);
-                }
-            }
-            if ((int)AA.getElapsedTime().asSeconds() == 2)
-            {
-                m *= -1;
-                AA.restart();
-            }
-        }
-
-        
-        
-        
-    }
-    }
-
-    void gravNvelo()
-    {
-        if (Bird.getPosition().y <= 0)
-            Bird.setPosition(Bird.getPosition().x, 0);
-
-      
-        d();
-
-
-
-        Bird.move(0, Velocity);
-        
-    }
-
-    void CollisionWPipes(Sprite pipes[])
-    {
-        if (Bird.getGlobalBounds().intersects(pipes[0].getGlobalBounds()) || Bird.getGlobalBounds().intersects(pipes[1].getGlobalBounds()) || Bird.getGlobalBounds().intersects(pipes[2].getGlobalBounds()) || Bird.getGlobalBounds().intersects(pipes[3].getGlobalBounds()) || Bird.getGlobalBounds().intersects(pipes[4].getGlobalBounds()))
-        {
-            if (!Splayed)
-            {
-                Whoop.play();
-                Hit.play();
-                Splayed = 1;
-            }
-            Bird.setRotation(70);
-            Flash.FlashOn = 1;
-            modes = 2;
-        }
-    }
-
-    void CollisionWGround()
-    {
-        if (Bird.getGlobalBounds().intersects(Lone.TwoGrounds.getGlobalBounds()) || Bird.getGlobalBounds().intersects(Ltwo.TwoGrounds.getGlobalBounds()))
-        {
-            if (!Splayed)
-            {
-                Hit.play();
-                Splayed = 1;
-            }
-            modes = 2;
         }
     }
 
@@ -466,12 +382,13 @@ struct Themes
         Textures[3].loadFromFile("London.png");
 
         themes.setTexture(Textures[0]);
-        themes.setScale(3, 1.1);
+        themes.setScale(3.4, 2);
+        themes.setPosition(0, -100);
     }
 
-    void Draw(int x)
+    void Draw()
     {
-        themes.setTexture(Textures[x]);
+        themes.setTexture(Textures[ChooseTheme]);
         window.draw(themes);
     }
 } Themes;
@@ -482,7 +399,7 @@ struct Scoring
     Text Score, HighScore;
     SoundBuffer ScoInc;
     Sound ScoreSound;
-    int Sinc, highScore = 0;
+    int Sinc, EasyHigh = 0, MediumHigh = 0, HardHigh = 0;
     bool Inc, MoveScoreUp;
 
     void Constructor(int x, int y, int size)
@@ -494,35 +411,84 @@ struct Scoring
         Score.setString(to_string(Sinc));
 
         HighScore.setFont(ScoreFont);
-        HighScore.setString(to_string(highScore));
+
         HighScore.setPosition(880, 1175);
         HighScore.setCharacterSize(20);
 
         ScoInc.loadFromFile("Score.wav");
         ScoreSound.setBuffer(ScoInc);
 
-        ifstream highScoreFile("highscore.txt");
-
-        if (highScoreFile.is_open())
-        {
-            highScoreFile >> highScore;
-            highScoreFile.close();
-        }
         Inc = 0, MoveScoreUp = 0, Sinc = 0;
     }
 
     void hsSetup()
     {
-        if (Sinc > highScore)
-            highScore = Sinc;
+        ifstream EasyHighScore("EasyHighScore.txt");
+        ifstream MediumHighScore("MediumHighScore.txt");
+        ifstream HardHighScore("HardHighScore.txt");
 
-        ofstream highScoreFile("highscore.txt");
-        if (highScoreFile.is_open())
+        if (diff == 0)
         {
-            highScoreFile << highScore;
-            highScoreFile.close();
+            HighScore.setString(to_string(EasyHigh));
+
+            if (EasyHighScore.is_open())
+            {
+                EasyHighScore >> EasyHigh;
+                EasyHighScore.close();
+            }
+
+            if (Sinc > EasyHigh)
+                EasyHigh = Sinc;
+
+            ofstream highScoreFile("EasyHighScore.txt");
+            if (highScoreFile.is_open())
+            {
+                highScoreFile << EasyHigh;
+                highScoreFile.close();
+            }
         }
-        // Reset Highest Score From Here
+
+        if (diff == 1)
+        {
+            HighScore.setString(to_string(MediumHigh));
+
+            if (MediumHighScore.is_open())
+            {
+                MediumHighScore >> MediumHigh;
+                MediumHighScore.close();
+            }
+
+            if (Sinc > MediumHigh)
+                MediumHigh = Sinc;
+
+            ofstream highScoreFile("MediumHighScore.txt");
+            if (highScoreFile.is_open())
+            {
+                highScoreFile << MediumHigh;
+                highScoreFile.close();
+            }
+        }
+
+        if (diff == 2)
+        {
+            HighScore.setString(to_string(HardHigh));
+
+            if (HardHighScore.is_open())
+            {
+                HardHighScore >> HardHigh;
+                HardHighScore.close();
+            }
+
+            if (Sinc > HardHigh)
+                HardHigh = Sinc;
+
+            ofstream highScoreFile("HardHighScore.txt");
+            if (highScoreFile.is_open())
+            {
+                highScoreFile << HardHigh;
+                highScoreFile.close();
+            }
+        }
     }
 
     void IncScore()
@@ -535,7 +501,7 @@ struct Scoring
         }
     }
 
-    void ForGover()
+    void ForGameOver()
     {
         if (!MoveScoreUp)
         {
@@ -569,13 +535,15 @@ struct TapToPlayMenu
     {
         Textures[0].loadFromFile("ttplay.png");
         Stuff[0].setTexture(Textures[0]);
-        Stuff[0].setScale(0.8, 0.8);
-        Stuff[0].setPosition(800, 200);
+        Stuff[0].setPosition(815, 200);
+        Stuff[0].setScale(1, 1);
+
 
         Textures[1].loadFromFile("getready.png");
         Stuff[1].setTexture(Textures[1]);
         Stuff[1].setScale(1.1, 1.1);
         Stuff[1].setPosition(735, 100);
+        Stuff[1].setScale(1.3, 1.3);
     }
     void Draw()
     {
@@ -583,6 +551,41 @@ struct TapToPlayMenu
         window.draw(Stuff[1]);
     }
 } Tmenu;
+
+struct Collision
+{
+    void CollisionWPipes(Sprite pipes[])
+    {
+        if (Bird.Bird.getGlobalBounds().intersects(pipes[0].getGlobalBounds()) || Bird.Bird.getGlobalBounds().intersects(pipes[1].getGlobalBounds()) || Bird.Bird.getGlobalBounds().intersects(pipes[2].getGlobalBounds()) || Bird.Bird.getGlobalBounds().intersects(pipes[3].getGlobalBounds()) || Bird.Bird.getGlobalBounds().intersects(pipes[4].getGlobalBounds()))
+        {
+            if (!Bird.Splayed)
+            {
+                Bird.Whoop.play();
+                Bird.Hit.play();
+                Bird.Splayed = 1;
+            }
+            Bird.Bird.setRotation(75);
+            Flash.FlashOn = 1;
+            currentGameState = GameState::GameOver;
+        }
+    }
+
+    void CollisionWGround()
+    {
+        if (Bird.Bird.getPosition().y <= 0)
+            Bird.Bird.setPosition(Bird.Bird.getPosition().x, 0);
+
+        if (Bird.Bird.getGlobalBounds().intersects(Lone.TwoGrounds.getGlobalBounds()) || Bird.Bird.getGlobalBounds().intersects(Ltwo.TwoGrounds.getGlobalBounds()))
+        {
+            if (!Bird.Splayed)
+            {
+                Bird.Hit.play();
+                Bird.Splayed = 1;
+            }
+            currentGameState = GameState::GameOver;
+        }
+    }
+}Collide;
 
 struct GameOverMenu
 {
@@ -629,10 +632,8 @@ struct GameOverMenu
 
     void Draw()
     {
-        window.draw(over[0]);
-        window.draw(over[1]);
-        window.draw(over[2]);
-        window.draw(over[3]);
+        for (int i = 0; i < 4; i++)
+            window.draw(over[i]);
     }
 } Gover;
 
@@ -640,54 +641,621 @@ struct ForModeControl
 {
     void ControlModeOne()
     {
-        if (Mouse::isButtonPressed(Mouse::Left) && modes == 0 && !ttp)
-            modes = 1;
+        if (currentGameState == GameState::eTTP && oo == 1 && Keyboard::isKeyPressed(Keyboard::Space))
+            currentGameState = GameState::eGame;
+
+        if (currentGameState != GameState::MainMenu)
+            Reseting = 0;
     }
 
     void Reset()
     {
-        if (Mouse::isButtonPressed(Mouse::Left) && modes == 2 && Mouse::getPosition().x <= 683 && Mouse::getPosition().x >= 587 && Mouse::getPosition().y <= 530 && Mouse::getPosition().y >= 480 && Gover.over[2].getPosition().y <= 400)
+        if (currentGameState == GameState::MainMenu && !Reseting)
         {
-            ttp = 1;
-            modes = 0;
-
-            Lone.Constructor(0, 650);
-            Ltwo.Constructor(780, 650);
+            Bird.Constructor(1.5, 300, 250);
 
             Pipes.Constructor();
 
-            Bird.Constructor(2, 300, 250);
+            Lone.Constructor(0, 700);
+            Ltwo.Constructor(1700, 700);
 
             Themes.Constructor();
 
-            Score.Constructor(280, 100, 50);
+            Tmenu.Constructor();
 
             Gover.Constuctor();
 
-            Flash.Constructor();
-        }
+            Score.Constructor(800, 100, 50);
 
-        if (event.type == Event::MouseButtonReleased)
-        {
-            if (event.mouseButton.button == Mouse::Left)
-                ttp = 0;
+            Flash.Constructor();
+
+            Reseting = 1;
         }
     }
 } Control;
 
+struct Difficulty
+{
+    Clock PipeTimer;
+    bool ForPipeTimer;
+
+    void DifficultySettings()
+    {
+        if (diff == 0 || diff == 2)
+        {
+            Velocity += Gravity;
+
+            if (Velocity >= 0)
+                Bird.RotateDown();
+
+            else
+                Bird.RotateUp();
+
+            if (diff == 2)
+            {
+                for (int i = 0; i < 5; i++)
+                {
+                    if (i % 2 == 0)
+                    {
+                        Pipes.PiUp[i].move(0, -PipeSpeedUpNDown);
+                        Pipes.PiDown[i].move(0, -PipeSpeedUpNDown);
+                    }
+                    else
+                    {
+                        Pipes.PiUp[i].move(0, PipeSpeedUpNDown);
+                        Pipes.PiDown[i].move(0, PipeSpeedUpNDown);
+                    }
+
+
+                    if ((int)PipeTimer.getElapsedTime().asSeconds() >= 2)
+                    {
+                        PipeSpeedUpNDown *= -1;
+                        PipeTimer.restart();
+                    }
+                }
+            }
+        }
+
+        if (diff == 1)
+        {
+            Velocity -= Gravity;
+            if (Velocity <= 0)
+                Bird.RotateDown();
+
+            else
+                Bird.RotateUp();
+        }
+    }
+}Difficulty;
+
+struct Menu
+{
+    RectangleShape darkWindow;
+    Texture Rate;
+    Sprite SpriteRate;
+
+    Texture Bc1;
+    Sprite MainBackGrounds[2];
+    RectangleShape RectangleRate;
+
+
+    Text textrate;
+
+    Texture MainMenu;
+    RectangleShape SpriteMainMenu;
+    Texture mainmenubgdark;
+    Sprite bgdark;
+    Vector2u windowSize = window.getSize();
+
+    Texture Title;
+    Sprite SpriteTitle;
+
+    Sprite btnplay;
+    Texture Theme;
+    Sprite SpriteTheme;
+    //flexibility
+    Texture returnback;
+    Sprite SpriteReturnBack;
+
+
+    RectangleShape rectangle;
+    //triangle
+    CircleShape triangle;
+
+
+    //themes for bird
+
+    Texture birdthemes;
+    Sprite SpriteBIRDthemes;
+   // Texture birdShape;
+    //Sprite  SpriteBirdShape;
+
+    RectangleShape rectanglebirdthemes;
+
+    Texture birdtheme;
+    Sprite Birdtheme;
+
+    void set()
+    {
+        RectangleShape dar(Vector2f(SCREEN_W, SCREEN_H));
+        darkWindow = dar;
+        darkWindow.setFillColor(Color(0, 0, 0, 200));
+
+        RectangleShape rectanglebirdthemes1(Vector2f(200.f, 100.f));
+        rectanglebirdthemes = rectanglebirdthemes1;
+        birdthemes.loadFromFile("btn-play.png");
+        SpriteBIRDthemes.setTexture(birdthemes);
+        SpriteBIRDthemes.setPosition(Vector2f(1100, 550));
+        SpriteBIRDthemes.setScale(1.5f, 1.5f);
+        rectanglebirdthemes.setPosition(Vector2f(1120, 560));
+        rectanglebirdthemes.setFillColor(Color::White);
+        rectanglebirdthemes.setScale(0.5f, 0.65f);
+
+        birdtheme.loadFromFile("birdmid.png");
+        Birdtheme.setTexture(birdtheme);
+        Birdtheme.setPosition(Vector2f(1145, 568));
+        Birdtheme.setScale(0.9f, 0.9f);
+        Bc1.loadFromFile("land.png");
+
+        RectangleShape RectangleRate111(Vector2f(95.0f, 35.0f));
+        RectangleShape rectangle111(Vector2f(70.0f, 25.0f));
+        rectangle = rectangle111;
+        RectangleRate = RectangleRate111;
+        textrate.setFont(fontrate);
+        textrate.setCharacterSize(25);
+        textrate.setString("Credits");
+        textrate.setFillColor(Color::Yellow);
+        textrate.setPosition(713, 575);
+        Rate.loadFromFile("btn-rate.png");
+        SpriteRate.setTexture(Rate);
+        SpriteRate.setPosition(Vector2f(700, 550));
+        SpriteRate.setScale(2.5f, 2.5f);
+        RectangleRate.setPosition(Vector2f(725, 570));
+        RectangleRate.setOutlineColor(Color::White);
+        RectangleRate.setFillColor(Color::White);
+
+
+        triangle.setPosition(Vector2f(33.f, 48.f));
+        triangle.setRadius(17.f);
+        triangle.setPointCount(3);
+        triangle.setFillColor(Color::Green);
+        triangle.setOutlineThickness(5.f);
+        triangle.setRotation(270.f);
+
+        rectangle.setPosition(Vector2f(20.f, 14.f));
+        rectangle.setOutlineColor(Color::White);
+        rectangle.setFillColor(Color::White);
+
+
+        btnplay.setTexture(birdthemes);
+        btnplay.setPosition(Vector2f(500, 550));
+        btnplay.setScale(1.5f, 1.5f);
+        SpriteReturnBack.setTexture(Rate);
+        SpriteReturnBack.setPosition(Vector2f(5, 5));
+        SpriteReturnBack.setScale(1.5f, 1.5f);
+
+        Theme.loadFromFile("Theme.png");
+        SpriteTheme.setTexture(Theme);
+        SpriteTheme.setPosition(Vector2f(900, 550));
+
+        SpriteTheme.setScale(1.5f, 1.5f);
+
+        Title.loadFromFile("game_title.png");
+        SpriteTitle.setTexture(Title);
+        SpriteTitle.setPosition(Vector2f(655, 110));
+        SpriteTitle.setScale(2.0f, 2.0f);
+
+        mainmenubgdark.loadFromFile("Dark bg.jpg");
+        MainMenu.loadFromFile("Classic.png");
+        bgdark.setTexture(mainmenubgdark);
+        RectangleShape SpriteMainMenu1(Vector2f(SCREEN_W, SCREEN_H));
+        SpriteMainMenu = SpriteMainMenu1;
+        SpriteMainMenu.setTexture(&MainMenu);
+    }
+    void draw()
+    {
+        Bird.UpNDown();
+        Bird.Animate();
+        Lone.Draw();
+        Ltwo.Draw();
+        Bird.Draw();
+        window.draw(menu.SpriteTitle);
+        window.draw(menu.btnplay);
+        window.draw(menu.SpriteTheme);
+        window.draw(menu.SpriteRate);
+        window.draw(menu.RectangleRate);
+        window.draw(menu.textrate);
+        window.draw(menu.SpriteBIRDthemes);
+        window.draw(menu.rectanglebirdthemes);
+        window.draw(menu.Birdtheme);
+    }
+}menu;
+
+struct credits
+{
+    Font font;
+    Text text[7];
+    Clock wingTimer;
+    int currBird = 0;
+    RectangleShape black;
+    Sprite birds[7];
+
+    void set()
+    {
+        font.loadFromFile("arial.ttf");
+        RectangleShape _b(Vector2f(SCREEN_W, SCREEN_H));
+        _b.setFillColor(Color(0, 0, 0, 150));
+        black = _b;
+
+        for (int i = 0; i < 7; i++)
+        {
+            text[i].setFont(font);
+            text[i].setFillColor(Color::Blue);
+            text[i].setOrigin(text[i].getGlobalBounds().width / 2, text[i].getGlobalBounds().height / 2);
+            text[i].setScale(1.5, 1.5);
+        }
+        for (int i = 0; i < 7; i++)
+        {
+            birds[i] = Bird.Bird;
+            birds[i].setTexture(Bird.TxOne[0]);
+            birds[i].setOrigin(birds[0].getGlobalBounds().width / 2, text[i].getGlobalBounds().height / 2);
+            birds[i].setScale(1.3, 1.3);
+        }
+
+        text[0].setString("Youssef Fayek");
+        text[1].setString("Maria Akram");
+        text[2].setString("Carine Bahaa");
+        text[3].setString("Maria Ramy");
+        text[4].setString("Karen Ashraf");
+        text[5].setString("Jennifer Hany");
+        text[6].setString("Omar Zamel");
+
+        birds[0].setPosition(SCREEN_W / 2 - text[0].getGlobalBounds().width / 2 - 15, 910 - 100);
+        birds[1].setPosition(SCREEN_W / 2 - text[0].getGlobalBounds().width / 2 - 15, 980 - 100);
+        birds[2].setPosition(SCREEN_W / 2 - text[0].getGlobalBounds().width / 2 - 15, 1050 - 100);
+        birds[3].setPosition(SCREEN_W / 2 - text[0].getGlobalBounds().width / 2 - 15, 1120 - 100);
+        birds[4].setPosition(SCREEN_W / 2 - text[0].getGlobalBounds().width / 2 - 15, 1190 - 100);
+        birds[5].setPosition(SCREEN_W / 2 - text[0].getGlobalBounds().width / 2 - 15, 1260 - 100);
+        birds[6].setPosition(SCREEN_W / 2 - text[0].getGlobalBounds().width / 2 - 15, 1330 - 100);
+
+        text[0].setPosition(SCREEN_W / 2 - 150, 800);
+        text[1].setPosition(SCREEN_W / 2 - 150, 870);
+        text[2].setPosition(SCREEN_W / 2 - 150, 940);
+        text[3].setPosition(SCREEN_W / 2 - 150, 1010);
+        text[4].setPosition(SCREEN_W / 2 - 150, 1080);
+        text[5].setPosition(SCREEN_W / 2 - 150, 1150);
+        text[6].setPosition(SCREEN_W / 2 - 150, 1220);
+    }
+
+    void draw()
+    {
+        for (int i = 0; i < 7; i++)
+        {
+            window.draw(text[i]);
+            window.draw(birds[i]);
+        }
+        window.draw(menu.SpriteReturnBack);
+        window.draw(menu.rectangle);
+        window.draw(menu.triangle);
+    }
+
+    void move()
+    {
+        if (text[0].getPosition().y >= SCREEN_H / 2 - 240)
+        {
+            text[0].move(0, -1);
+            birds[0].move(0, -1);
+
+            text[1].move(0, -1);
+            birds[1].move(0, -1);
+
+            text[2].move(0, -1);
+            birds[2].move(0, -1);
+
+            text[3].move(0, -1);
+            birds[3].move(0, -1);
+
+            text[4].move(0, -1);
+            birds[4].move(0, -1);
+
+            text[5].move(0, -1);
+            birds[5].move(0, -1);
+
+            text[6].move(0, -1);
+            birds[6].move(0, -1);
+        }
+    }
+
+    void wingMove()
+    {
+        if (wingTimer.getElapsedTime().asMilliseconds() >= 150)
+        {
+            currBird = (currBird + 1) % 3;
+            birds[0].setTexture(Bird.TxOne[currBird]);
+            birds[1].setTexture(Bird.TxOne[currBird]);
+            birds[2].setTexture(Bird.TxOne[currBird]);
+            birds[3].setTexture(Bird.TxOne[currBird]);
+            birds[4].setTexture(Bird.TxOne[currBird]);
+            birds[5].setTexture(Bird.TxOne[currBird]);
+            birds[6].setTexture(Bird.TxOne[currBird]);
+            wingTimer.restart();
+        }
+    }
+}credits;
+
+struct themes
+{
+    Texture theme1;
+
+    Sprite SpriteTheme1;
+
+    Texture theme2;
+
+    Sprite SpriteTheme2;
+
+
+    Texture theme3;
+
+    Sprite SpriteTheme3;
+
+
+    RectangleShape titleBar;
+    Texture theme4;
+    Text titleText;
+    Sprite SpriteTheme4;
+    void set()
+    {
+        Text titleText1("Choose a Theme", FontTheme, 20);
+        titleText = titleText1;
+        theme1.loadFromFile("Classic.png");
+        SpriteTheme1.setTexture(theme1);
+        SpriteTheme1.setPosition(Vector2f(400, 40));
+        SpriteTheme1.setScale(0.82f, 0.6f);
+
+        theme2.loadFromFile("London.png");
+        SpriteTheme2.setTexture(theme2);
+        SpriteTheme2.setPosition(Vector2f(800, 40));
+        SpriteTheme2.setScale(0.82f, 0.6f);
+
+        theme3.loadFromFile("Shanghai.png");
+        SpriteTheme3.setTexture(theme3);
+        SpriteTheme3.setPosition(Vector2f(400, 350));
+        SpriteTheme3.setScale(0.82f, 0.6f);
+
+        theme4.loadFromFile("Tokyo.png");
+        SpriteTheme4.setTexture(theme4);
+        SpriteTheme4.setPosition(Vector2f(800, 350));
+        SpriteTheme4.setScale(0.82f, 0.6f);
+
+        RectangleShape titleBar1(Vector2f(822, 40));
+        titleBar = titleBar1;
+        titleBar.setFillColor(Color::Black);
+        titleBar.setPosition(400, 0);
+
+        titleText.setFillColor(Color::White);
+        titleText.setPosition(100, 10); // Adjust as needed
+
+        // Calculate the centered position for the text
+        float textWidth = titleText.getGlobalBounds().width;
+        // Set the centered position for the text
+        titleText.setPosition(750, 10); // Adjusted for vertical centering
+    }
+    void draw()
+    {
+        Lone.Draw();
+        Ltwo.Draw();
+        window.draw(menu.darkWindow);
+        window.draw(menu.SpriteReturnBack);
+        window.draw(menu.rectangle);
+        window.draw(menu.triangle);
+        window.draw(theme.SpriteTheme1);
+        window.draw(theme.SpriteTheme2);
+        window.draw(theme.SpriteTheme3);
+        window.draw(theme.SpriteTheme4);
+        window.draw(theme.titleBar);
+        window.draw(theme.titleText);
+    }
+}theme;
+
+struct BirdThemes {
+    Texture T1[4], T2[4], T3[4];
+    Sprite Bird1 , Bird2 , Bird3;
+    Clock BirdTimer;
+    RectangleShape titleBar;
+    Text titleText;
+    int  Iterator = 0;
+   
+    void setNanimate()
+    {
+        Text titleText1("Choose a Bird", FontTheme, 20);
+        titleText = titleText1;
+
+        T1[0].loadFromFile("birddown.png");
+        T1[1].loadFromFile("birdmid.png");
+        T1[2].loadFromFile("birdup.png");
+        T1[3].loadFromFile("birdmid.png");
+        Bird1.setPosition(window.getSize().x /2,window.getSize().y /3 );
+        
+        T2[0].loadFromFile("birddown2.png");
+        T2[1].loadFromFile("birdmid2.png");
+        T2[2].loadFromFile("birdup2.png");
+        T2[3].loadFromFile("birdmid2.png");
+        Bird2.setPosition(window.getSize().x / 2, window.getSize().y / 2);
+
+        T3[0].loadFromFile("birddown3.png");
+        T3[1].loadFromFile("birdmid3.png");
+        T3[2].loadFromFile("birdup3.png");
+        T3[3].loadFromFile("birdmid3.png");
+        Bird3.setPosition(window.getSize().x / 2, window.getSize().y - 200);
+
+        RectangleShape titleBar1(Vector2f(822, 40));
+        titleBar = titleBar1;
+        titleBar.setFillColor(Color::Black);
+        titleBar.setPosition(400, 0);
+
+        titleText.setFillColor(Color::White);
+        titleText.setPosition(100, 10); // Adjust as needed
+
+        // Calculate the centered position for the text
+        float textWidth = titleText.getGlobalBounds().width;
+        // Set the centered position for the text
+        titleText.setPosition(750, 10); // Adjusted for vertical centering
+
+        if (BirdTimer.getElapsedTime().asSeconds() > 0.06)
+        {
+            if (Iterator < 3)
+                Iterator++;
+
+            else
+                Iterator = 0;
+
+            Bird1.setTexture(T1[Iterator]);
+            Bird2.setTexture(T2[Iterator]);
+            Bird3.setTexture(T3[Iterator]);
+            
+        }
+        
+
+    }
+    void draw()
+    {
+        Lone.Draw();
+        Ltwo.Draw();
+        window.draw(menu.darkWindow);
+        window.draw(menu.SpriteReturnBack);
+        window.draw(menu.rectangle);
+        window.draw(menu.triangle);
+        window.draw(Birds.Bird1);
+        window.draw(Birds.Bird2);
+        window.draw(Birds.Bird3);
+        window.draw(Birds.titleBar);
+        window.draw(Birds.titleText);
+        
+    }
+
+
+}Birds;
+
+struct levels
+{
+    RectangleShape Rectangle;
+    Texture play;
+    Sprite btnplay1;
+    RectangleShape rectangle2;
+    Texture play2;
+    Sprite btnplay2;
+
+    RectangleShape rectangle3;
+    Texture play3;
+    Sprite btnplay3;
+
+    Text text;
+    Text text2;
+    Text text3;
+
+    void set()
+    {
+        RectangleShape _Rectangle(Vector2f(200, 100));
+        RectangleShape _rectangle2(Vector2f(200.f, 100.f));
+        RectangleShape _rectangle3(Vector2f(200.f, 100.f));
+        Rectangle = _Rectangle;
+        rectangle3 = _rectangle3;
+        rectangle2 = _rectangle2;
+
+
+        Rectangle.setPosition(Vector2f(790, 180));
+        Rectangle.setFillColor(Color::White);
+        Rectangle.setScale(0.7f, 0.7f);
+
+        play.loadFromFile("btn-play.png");
+        btnplay1.setTexture(play);
+        btnplay1.setPosition(Vector2f(735, 150));
+        btnplay1.setScale(2.0f, 2.0f);
+
+        rectangle2.setPosition(Vector2f(790, 330));
+        rectangle2.setFillColor(Color::White);
+        rectangle2.setScale(0.7f, 0.7f);
+
+        play2.loadFromFile("btn-play.png");
+        btnplay2.setTexture(play2);
+        btnplay2.setPosition(Vector2f(735, 320));
+        btnplay2.setScale(2.0f, 2.0f);
+
+        rectangle3.setPosition(Vector2f(790, 520));
+        rectangle3.setFillColor(Color::White);
+        rectangle3.setScale(0.7f, 0.7f);
+
+        play3.loadFromFile("btn-play.png");
+        btnplay3.setTexture(play3);
+        btnplay3.setPosition(Vector2f(735, 490));
+        btnplay3.setScale(2.0f, 2.0f);
+
+        text.setFont(MainFont);
+        text.setString("Easy");
+        text.setCharacterSize(40);
+        text.setFillColor(Color::Green);
+        text.setPosition(780, 185);
+
+        text2.setFont(MainFont);
+        text2.setString("Medium");
+        text2.setCharacterSize(40);
+        text2.setFillColor(Color::Yellow);
+        text2.setPosition(760, 355);
+
+        text3.setFont(MainFont);
+        text3.setString("Hard");
+        text3.setCharacterSize(40);
+        text3.setFillColor(Color::Red);
+        text3.setPosition(780, 525);
+    }
+
+    void draw()
+    {
+        window.draw(menu.SpriteReturnBack); // return back button
+        Lone.Draw();
+        Ltwo.Draw();
+        window.draw(menu.rectangle); // 
+        window.draw(menu.triangle);
+        window.draw(level.btnplay1);//
+        window.draw(level.btnplay2); //
+        window.draw(level.btnplay3); // play
+        window.draw(level.Rectangle);
+        window.draw(level.rectangle2);
+        window.draw(level.rectangle3);
+        window.draw(level.text); // easy
+        window.draw(level.text2); // medium
+        window.draw(level.text3); // hard
+    }
+}level;
+
 struct Gamemodes
 {
+    void MainMenu()
+    {
+        if (currentGameState != GameState::eGame)
+        {
+            Lone.MoveGrounds();
+            Ltwo.MoveGrounds();
+
+            //window.clear();
+
+            Themes.Draw();
+            if (currentGameState == GameState::Credits)
+            {
+                //credits.draw();
+                credits.move();
+                credits.wingMove();
+            }
+        }
+    }
     void TTPlay()
     {
         Bird.Animate();
         Bird.UpNDown();
 
-        Lone.MoveGrounds();
-        Ltwo.MoveGrounds();
 
-        window.clear();
 
-        Themes.Draw(0);
+        Themes.Draw();
 
         Tmenu.Draw();
 
@@ -696,34 +1264,22 @@ struct Gamemodes
         Lone.Draw();
         Ltwo.Draw();
 
-        window.display();
     }
     void Playing()
     {
-        Bird.CollisionWGround();
-        Bird.CollisionWGround();
-       // Bird.CollisionWPipes(Pipes.PiUp);
-       // Bird.CollisionWPipes(Pipes.PiDown);
-        Bird.gravNvelo();
+        Collide.CollisionWGround();
+        Collide.CollisionWGround();
+        Collide.CollisionWPipes(Pipes.PiUp);
+        Collide.CollisionWPipes(Pipes.PiDown);
+
         Bird.GUI();
-      
+
         Bird.Animate();
-
-       
-        
-        
-
-
         Pipes.MovePipes();
+        Pipes.ResetPipesPosition();
 
-        Lone.MoveGrounds();
-        Ltwo.MoveGrounds();
 
         Score.IncScore();
-
-        window.clear();
-
-        Themes.Draw(0);
 
         Bird.Draw();
 
@@ -733,21 +1289,17 @@ struct Gamemodes
         Ltwo.Draw();
 
         Score.DrawScore();
-
-        window.display();
     }
-
     void Collided()
     {
         Bird.MoveDTCol();
 
         Gover.Transition();
 
-        Score.ForGover();
+        Score.ForGameOver();
 
-        window.clear();
 
-        Themes.Draw(0);
+        Themes.Draw();
 
         Pipes.Draw();
 
@@ -760,10 +1312,11 @@ struct Gamemodes
 
         Score.DrawScore();
         Score.DrawHighScore();
-
         Flash.Draw();
 
-        window.display();
+        window.draw(menu.SpriteReturnBack);
+        window.draw(menu.rectangle);
+        window.draw(menu.triangle);
     }
 } Mode;
 
@@ -771,14 +1324,35 @@ struct Game
 {
     void Flappy_Bird() // Call Me
     {
-        if (modes == 0)
+        switch (currentGameState)
+        {
+        case MainMenu:
+            menu.draw();
+            break;
+        case eTTP:
             Mode.TTPlay();
-
-        if (modes == 1)
+            break;
+        case eGame:
             Mode.Playing();
-
-        if (modes == 2)
+            break;
+        case eDifficulty:
+            level.draw();
+            break;
+        case Credits:
+            credits.draw();
+            break;
+        case eThemes:
+            theme.draw();
+            break;
+        case BirdThemes:
+            Birds.draw();
+            break;
+        case GameOver:
             Mode.Collided();
+            break;
+        default:
+            break;
+        }
     }
 } Game;
 
@@ -786,25 +1360,10 @@ struct Game
 
 int main()
 {
+    srand(time(NULL));
     window.setPosition(Vector2i(100, 50));
     window.setFramerateLimit(60);
-
-    Bird.Constructor(1.7, 300, 250);
-
-    Pipes.Constructor();
-
-    Lone.Constructor(0, 650);
-    Ltwo.Constructor(1700, 650);
-
-    Themes.Constructor();
-
-    Tmenu.Constructor();
-
-    Gover.Constuctor();
-
-    Score.Constructor(800, 100, 50);
-
-    Flash.Constructor();
+    setAssets();
 
     while (window.isOpen())
     {
@@ -812,15 +1371,128 @@ int main()
         {
             if (event.type == Event::Closed)
                 window.close();
+            transition();
+            if (currentGameState == GameState::eGame || currentGameState == GameState::eTTP)
+                Bird.GUI();
         }
-       // Bird.GravNvelo();
+        if (currentGameState == GameState::eGame)
+            Difficulty.DifficultySettings();
 
         Control.ControlModeOne();
         Control.Reset();
         Score.hsSetup();
-
-        // Full Game
-        Game.Flappy_Bird();
+        draw();
     }
     return 0;
+}
+
+void setAssets()
+{
+    menu.set();
+    Bird.Constructor(2, 500, 350);
+    level.set();
+    theme.set();
+    setFonts();
+    credits.set();
+}
+
+void draw()
+{
+    window.clear();
+    Themes.Draw();
+    if (currentGameState != GameState::GameOver)
+    {
+        Lone.MoveGrounds();
+        Ltwo.MoveGrounds();
+    }
+    Game.Flappy_Bird();
+    animation();
+    window.display();
+}
+
+void transition()
+{
+    //return
+    if (Mouse::isButtonPressed(Mouse::Left) && currentGameState != GameState::MainMenu)
+    {
+        Vector2i mousePos = Mouse::getPosition(window);
+        if (mousePos.x > 5 && mousePos.x < 96 && mousePos.y>7 && mousePos.y < 57)
+            currentGameState = GameState::MainMenu;
+    }
+    //button press
+
+    if (Mouse::isButtonPressed(Mouse::Left) && currentGameState == GameState::MainMenu)
+    {
+        Vector2i mousePos = Mouse::getPosition(window);
+        if (mousePos.x > 500 && mousePos.x < 740 && mousePos.y>550 && mousePos.y < 790)
+        {
+            currentGameState = GameState::eDifficulty;
+        }
+    }
+    //themes
+    if (Mouse::isButtonPressed(Mouse::Left) && currentGameState == GameState::MainMenu)
+    {
+        Vector2i mousePos = Mouse::getPosition(window);
+        if (mousePos.x >900 && mousePos.x < 1050 && mousePos.y>550 && mousePos.y < 790)
+        {
+            currentGameState = GameState::eThemes;
+        }
+    }
+    //BirdThemes
+    if (Mouse::isButtonPressed(Mouse::Left) && currentGameState == GameState::MainMenu)
+    {
+        Vector2i mousePos = Mouse::getPosition(window);
+        if (mousePos.x > 1100 && mousePos.x < 1250 && mousePos.y>550 && mousePos.y < 790)
+        {
+            currentGameState = GameState::BirdThemes;
+        }
+    }
+    //credits
+    if (Mouse::isButtonPressed(Mouse::Left) && currentGameState == GameState::MainMenu)
+    {
+        Vector2i mousePos = Mouse::getPosition(window);
+        if (mousePos.x > 700 && mousePos.x < 900 && mousePos.y>550 && mousePos.y < 790)
+        {
+            currentGameState = GameState::Credits;
+        }
+    }
+
+    // Check for mouse click events
+    if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left)
+    {
+        Vector2i mousePos = Mouse::getPosition(window);
+        // Check if the return back sprite is clicked
+    }
+    // levels
+    if (Mouse::isButtonPressed(Mouse::Left) && currentGameState == GameState::eDifficulty)
+    {
+        Vector2i mousePos = Mouse::getPosition(window);
+        if (mousePos.x > 749 && mousePos.x < 929 && mousePos.y >161 && mousePos.y < 258) {
+            diff = 0;
+            currentGameState = GameState::eTTP;
+            oo = 1;
+        }
+
+        if (mousePos.x > 727 && mousePos.x < 927 && mousePos.y >325 && mousePos.y < 425) {
+            diff = 1;
+            currentGameState = GameState::eTTP;
+            oo = 1;
+        }
+        if (mousePos.x > 740 && mousePos.x < 927 && mousePos.y >501 && mousePos.y < 596) {
+            diff = 2;
+            currentGameState = GameState::eTTP;
+            oo = 1;
+        }
+    }
+}
+
+void animation() // for credits
+{
+
+    if (currentGameState == GameState::Credits)
+    {
+        Bird.Animate();
+        credits.move();
+        credits.wingMove();
+    }
 }
